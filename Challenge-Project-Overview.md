@@ -101,9 +101,6 @@ Student and campus services
 - LangGraph for the required small workflow  
 - Ragas for systematic RAG evaluation  
 - pytest for automated testing  
-
-**Evaluation Metrics:**
-- [e.g., Accuracy, Precision/Recall, RMSE, BLEU score]
   
 ---
 ## 📚 Resources to Get Started
