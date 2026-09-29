@@ -155,7 +155,7 @@ The following resources are organized around the three project milestones. Stude
 
 **Official check-ins:** During our biweekly 45-minute AI Studio Lab Section meeting block (2nd and 4th week of every month)
 
- **Other ways to reach out to me with questions:** 
+**Other ways to reach out to me with questions:** 
 * Your team's channel within Break Through Tech’s Discord space
 * Email; please copy your teammates and AI Studio Coach
 * Note: I will aim to respond within 48 hours. Please reach out to your AI Studio Coach with urgent questions.
