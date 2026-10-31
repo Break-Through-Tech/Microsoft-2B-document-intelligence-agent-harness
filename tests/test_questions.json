@@ -1,0 +1,33 @@
+
+[
+  {
+    "id": "Q1",
+    "question": "What sanctions can a student receive for academic integrity violations?",
+    "expected_behavior": "answer",
+    "reference": "A first minor violation may result in a warning and assignment revision. More serious or repeated violations may result in a zero, reduced course grade, integrity probation, suspension, or expulsion."
+  },
+  {
+    "id": "Q2",
+    "question": "How does a student report suspected academic misconduct?",
+    "expected_behavior": "answer",
+    "reference": "An instructor who reasonably suspects misconduct notifies the student in writing and offers a meeting."
+  },
+  {
+    "id": "Q3",
+    "question": "What happens when a student disputes an attendance decision?",
+    "expected_behavior": "answer",
+    "reference": "A student should first discuss the attendance decision with the instructor. A written review request to the department chair is due within five business days after the instructor's response."
+  },
+  {
+    "id": "Q4",
+    "question": "What is the university's policy on interplanetary travel?",
+    "expected_behavior": "refuse",
+    "reference": ""
+  },
+  {
+    "id": "Q5",
+    "question": "What are the university's rules for professional football contracts?",
+    "expected_behavior": "refuse",
+    "reference": ""
+  }
+]

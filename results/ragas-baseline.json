@@ -1,0 +1,9 @@
+{
+    "model": "qwen2.5:3b",
+    "metric": "faithfulness",
+    "number_of_questions": 2,
+    "valid_scores": 2,
+    "scores": {
+        "faithfulness": 1.0
+    }
+}
