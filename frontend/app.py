@@ -7,49 +7,12 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Top Menu Bar
+# Add custom CSS for layout
 st.markdown(
     """
     <style>
-    .menu-bar {
-        background-color: #2B2117; /* Dark brown background */
-        padding: 10px;
-        text-align: center;
-        font-size: 24px;
-        font-weight: bold;
-        color: #F6F2EE; /* Light text color */
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        z-index: 1000;
-    }
     .main-content {
         margin-top: 60px; /* Push content below the menu bar */
-    }
-    .user-input {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        background-color: #f8f9fa;
-        padding: 10px;
-        border-top: 1px solid #ddd;
-    }
-    .user-input input {
-        width: 100%;
-        padding: 10px;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        outline: none;
-    }
-    .user-input input:focus {
-        border: 1px solid #ddd; /* No red glow on focus */
-    }
-    .chat-container {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
     }
     .user-message {
         text-align: right;
@@ -61,7 +24,6 @@ st.markdown(
         color: #555;
     }
     </style>
-    <div class="menu-bar">MS2B</div>
     """,
     unsafe_allow_html=True,
 )
@@ -81,39 +43,25 @@ st.markdown('<div class="main-content">', unsafe_allow_html=True)
 st.title("MS2B Chatbot")
 st.write("Ask a question about your documents:")
 
-# Chat history
+# Initialize chat history in session state
 if "chat_history" not in st.session_state:
     st.session_state["chat_history"] = []
-
-# Display chat history
-st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-for chat in st.session_state["chat_history"]:
-    st.markdown(f'<div class="user-message">**You:** {chat["question"]}</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="bot-message">**Bot:** {chat["answer"]}</div>', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
-
-# User input bar at the bottom
-st.markdown('<div class="user-input">', unsafe_allow_html=True)
-# user_input = st.text_input("", key="user_input", label_visibility="collapsed")
-st.markdown('</div>', unsafe_allow_html=True)
 
 # Define a callback function to handle user input
 def handle_user_input():
     user_input = st.session_state["user_input"]  # Get the current input
     if user_input:
-        dummy_answer = "This is a dummy answer. [Source: Document 1, Page 3]"
-        st.session_state["chat_history"].append({"question": user_input, "answer": dummy_answer})
-        st.session_state["user_input"] = ""  # Clear the input box
+        # Simulate a bot response (replace this with actual logic or API call)
+        bot_response = f"I'm a bot, and you said: {user_input}"
+        # Append the conversation to chat history
+        st.session_state["chat_history"].append({"user": user_input, "bot": bot_response})
+        # Clear the input box
+        st.session_state["user_input"] = ""
 
-# User input bar at the bottom
-st.markdown('<div class="user-input">', unsafe_allow_html=True)
-st.text_input(
-    "",
-    key="user_input",
-    label_visibility="collapsed",
-    on_change=handle_user_input,  # Use the callback to handle input
-)
+# Tutorial Test - BEGIN
+prompt = st.chat_input("Say something")
+if prompt:
+    st.write(f"User has sent the following prompt: {prompt}")
+# Tutorial Test - END
+
 st.markdown('</div>', unsafe_allow_html=True)
-
-
-
