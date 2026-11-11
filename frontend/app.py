@@ -43,9 +43,33 @@ st.markdown('<div class="main-content">', unsafe_allow_html=True)
 st.title("MS2B Chatbot")
 st.write("Ask a question about your documents:")
 
-# Initialize chat history in session state
-if "chat_history" not in st.session_state:
-    st.session_state["chat_history"] = []
+message = st.chat_message("assistant")
+message.write("Hello human :> what do you want ?")
+
+# Initialize chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# Display chat messages from history on app rerun
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+if prompt := st.chat_input("What is up?"):
+    # Display user message to chat container
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # Add user message to chat history
+    st.session_state.messages.append({"role": "user", "content": prompt})
+
+    response = f"Echo: {prompt}"
+    # Display assistant message to chat container
+    with st.chat_message("assistant"):
+        st.markdown(response)
+    # Add assistant message to chat history
+    st.session_state.messages.append({"role": "assistant", "content": response})
+
 
 # Define a callback function to handle user input
 def handle_user_input():
@@ -58,10 +82,5 @@ def handle_user_input():
         # Clear the input box
         st.session_state["user_input"] = ""
 
-# Tutorial Test - BEGIN
-prompt = st.chat_input("Say something")
-if prompt:
-    st.write(f"User has sent the following prompt: {prompt}")
-# Tutorial Test - END
 
 st.markdown('</div>', unsafe_allow_html=True)
