@@ -53,24 +53,7 @@ with st.sidebar:
     else:
         st.write("No files uploaded yet.")
 
-    # File selection for deletion
-    selected_files = st.multiselect("Select files to delete:", st.session_state.uploaded_files)
 
-    # Delete selected files with confirmation
-    if st.button("Delete Selected"):
-        if selected_files:
-            confirm = st.warning(
-                f"Are you sure you want to delete the selected files: {', '.join(selected_files)}?",
-                icon="⚠️",
-            )
-            if st.button("Confirm Delete"):
-                # Remove selected files from the list
-                st.session_state.uploaded_files = [
-                    file for file in st.session_state.uploaded_files if file not in selected_files
-                ]
-                st.success("Selected files have been deleted.")
-        else:
-            st.warning("No files selected for deletion.")
 
     # Clear all files button with confirmation
     if st.button("Clear All"):
@@ -100,9 +83,9 @@ with st.sidebar:
         st.session_state.files_cleared = False  # Reset AFTER the success message is shown in the next rerun
 
     # Debugging logs
-    st.write(f"Clear All Flag: {st.session_state.clear_all_flag}")
-    st.write(f"Files Cleared: {st.session_state.get('files_cleared', False)}")
-    st.write(f"Uploaded Files: {st.session_state.uploaded_files}")
+    # st.write(f"Clear All Flag: {st.session_state.clear_all_flag}")
+    # st.write(f"Files Cleared: {st.session_state.get('files_cleared', False)}")
+    # st.write(f"Uploaded Files: {st.session_state.uploaded_files}")
 
     # Main content area
     st.markdown('<div class="main-content">', unsafe_allow_html=True)
