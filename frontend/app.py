@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from answer_generation import source_filename, source_location
 from ingestion import ingest_uploaded_file, clear_uploaded_documents
 from workflow import build_workflow
 
@@ -213,11 +214,25 @@ if not st.session_state.messages:
         )
 
 
+def render_message(message):
+    st.markdown(message["content"])
+
+    chunks = message.get("chunks", [])
+    if chunks:
+        with st.expander("View sources and retrieved text"):
+            for index, chunk in enumerate(chunks):
+                if index:
+                    st.divider()
+                st.text(source_filename(chunk))
+                st.text(source_location(chunk))
+                st.text(chunk["text"])
+
+
 # Display previous messages.
 for message in st.session_state.messages:
 
     with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+        render_message(message)
 
 
 # --------------------------------------------------
@@ -254,21 +269,17 @@ if prompt := st.chat_input("Ask away..."):
                     "I couldn't generate an answer."
                 )
 
-                st.markdown(answer_text)
-
-                # Display source information separately.
-                citations = result.get("citations", [])
-
-                if citations:
-
-                    with st.expander("View Sources"):
-                        for citation in citations:
-                            st.write(f"- {citation}")
-
-                st.session_state.messages.append({
+                message = {
                     "role": "assistant",
                     "content": answer_text,
-                })
+                    "chunks": [
+                        chunk
+                        for chunk in output.get("evidence", {}).get("chunks", [])
+                        if chunk.get("text", "").strip()
+                    ],
+                }
+                render_message(message)
+                st.session_state.messages.append(message)
 
             except Exception as error:
 

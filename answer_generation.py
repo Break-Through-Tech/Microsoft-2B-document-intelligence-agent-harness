@@ -12,16 +12,16 @@ REFUSAL = (
 )
 
 
-def _location(chunk: dict) -> str:
+def source_location(chunk: dict) -> str:
     """Find a verifiable page or section reference without inventing one."""
     meta = chunk.get("metadata") or {}
 
     for key, label in (
+        ("page", "Page"),
+        ("page_number", "Page"),
         ("section", "Section"),
         ("section_title", "Section"),
         ("heading", "Section"),
-        ("page", "Page"),
-        ("page_number", "Page"),
     ):
         value = meta.get(key)
 
@@ -61,11 +61,11 @@ def _location(chunk: dict) -> str:
     return "Page/section unavailable"
 
 
-def _citation(chunk: dict) -> str:
-    """Build a citation from the retrieved chunk's metadata."""
+def source_filename(chunk: dict) -> str:
+    """Return the document filename used in citations."""
     meta = chunk.get("metadata") or {}
 
-    filename = Path(
+    return Path(
         str(
             chunk.get("file")
             or meta.get("filename")
@@ -73,7 +73,9 @@ def _citation(chunk: dict) -> str:
         )
     ).name
 
-    return f"{filename}, {_location(chunk)}"
+
+def _citation(chunk: dict) -> str:
+    return f"{source_filename(chunk)}, {source_location(chunk)}"
 
 
 def _refuse() -> dict:
