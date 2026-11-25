@@ -22,11 +22,13 @@ text_splitter = RecursiveCharacterTextSplitter(
 
 
 def extract_text(file_path: Path, file_type: str):
-    """Extract document text and metadata."""
+    """Extract text blocks with optional page numbers and document metadata."""
 
     if file_type == "pdf":
-        text = pymupdf4llm.to_markdown(str(file_path))
-        metadata = pymupdf.open(str(file_path)).metadata or {}
+        with pymupdf.open(str(file_path)) as document:
+            pages = pymupdf4llm.to_markdown(document, page_chunks=True)
+            metadata = document.metadata or {}
+        return [(page["text"], number) for number, page in enumerate(pages, 1)], metadata
 
     elif file_type == "docx":
         text = MarkItDown().convert(str(file_path)).text_content
@@ -54,7 +56,7 @@ def extract_text(file_path: Path, file_type: str):
     else:
         raise ValueError(f"Unsupported file type: {file_type}")
 
-    return text, metadata
+    return [(text, None)], metadata
 
 
 def ingest_uploaded_file(uploaded_file):
@@ -75,12 +77,18 @@ def ingest_uploaded_file(uploaded_file):
         file_path = Path(temp_dir) / filename
         file_path.write_bytes(uploaded_file.getvalue())
 
-        text, doc_metadata = extract_text(file_path, file_type)
+        text_blocks, doc_metadata = extract_text(file_path, file_type)
 
-    if not text or not text.strip():
+    if not any(text and text.strip() for text, _ in text_blocks):
         raise ValueError(f"No readable text was extracted from {filename}.")
 
-    chunks = text_splitter.split_text(text)
+    chunk_pages = [
+        (chunk, page)
+        for text, page in text_blocks
+        if text
+        for chunk in text_splitter.split_text(text)
+    ]
+    chunks = [chunk for chunk, _ in chunk_pages]
 
     if not chunks:
         raise ValueError(f"No text chunks were created for {filename}.")
@@ -92,8 +100,8 @@ def ingest_uploaded_file(uploaded_file):
     documents = chunks
     metadatas = []
 
-    for chunk_number, chunk in enumerate(chunks):
-        metadatas.append({
+    for chunk_number, (_, page) in enumerate(chunk_pages):
+        metadata = {
             "filename": filename,
             "filepath": f"uploaded/{filename}",
             "file_type": file_type,
@@ -104,7 +112,10 @@ def ingest_uploaded_file(uploaded_file):
             "creation_date": str(doc_metadata.get("creationDate") or ""),
             "mod_date": str(doc_metadata.get("modDate") or ""),
             "uploaded_by_user": True,
-        })
+        }
+        if page is not None:
+            metadata["page"] = page
+        metadatas.append(metadata)
 
     # Generate embeddings using the same model and document prefix
     # as the original notebook.
@@ -121,8 +132,10 @@ def ingest_uploaded_file(uploaded_file):
     # Find previous uploads with the same filename.
     previous = _collection.get(
         where={
-            "uploaded_by_user": True,
-            "filename": filename
+            "$and": [
+                {"uploaded_by_user": True},
+                {"filename": filename},
+            ]
         },
         include=[]
     )
