@@ -1,23 +1,76 @@
+from pathlib import Path
+import sys
+import hashlib
+
 import streamlit as st
 
-# Set page configuration
+
+# --------------------------------------------------
+# 1. Project setup
+# --------------------------------------------------
+
+ROOT = Path(__file__).resolve().parent.parent
+
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from ingestion import ingest_uploaded_file, clear_uploaded_documents
+from workflow import build_workflow
+
+
 st.set_page_config(
     page_title="MS2B Document Intelligence",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-# Add custom CSS for layout
+
+# --------------------------------------------------
+# 2. Cache the LangGraph workflow
+# --------------------------------------------------
+
+@st.cache_resource
+def get_workflow():
+    return build_workflow()
+
+
+# --------------------------------------------------
+# 3. Session state initialization
+# --------------------------------------------------
+
+if "uploaded_files" not in st.session_state:
+    st.session_state.uploaded_files = {}
+
+if "processed_hashes" not in st.session_state:
+    st.session_state.processed_hashes = set()
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+if "clear_all_flag" not in st.session_state:
+    st.session_state.clear_all_flag = False
+
+if "uploader_version" not in st.session_state:
+    st.session_state.uploader_version = 0
+
+
+# --------------------------------------------------
+# 4. Custom CSS
+# --------------------------------------------------
+
 st.markdown(
     """
     <style>
     .main-content {
+        padding: 10px;
     }
+
     .user-message {
         text-align: right;
         color: #333;
         font-weight: bold;
     }
+
     .bot-message {
         text-align: left;
         color: #555;
@@ -27,110 +80,207 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Sidebar for Sources
+
+# --------------------------------------------------
+# 5. Sidebar: Document uploads and sources
+# --------------------------------------------------
+
 with st.sidebar:
+
     st.header("Sources")
 
-    # Initialize uploaded files in session state
-    if "uploaded_files" not in st.session_state:
-        st.session_state.uploaded_files = []
+    uploaded_file = st.file_uploader(
+        "Upload Documents",
+        type=["pdf", "txt", "docx"],
+        accept_multiple_files=False,
+        key=f"document_uploader_{st.session_state.uploader_version}",
+    )
 
-    if "clear_all_flag" not in st.session_state:
-        st.session_state.clear_all_flag = False
-
-    # File uploader
-    uploaded_file = st.file_uploader("Upload Documents", type=["pdf", "txt", "docx"], accept_multiple_files=False)
-
-    # Add the uploaded file to the session state list
+    # Process a newly uploaded document only once.
     if uploaded_file is not None:
-        st.session_state.uploaded_files.append(uploaded_file.name)
 
-    # Display uploaded files
-    st.write("Uploaded Documents:")
+        file_bytes = uploaded_file.getvalue()
+        file_hash = hashlib.sha256(file_bytes).hexdigest()
+
+        if file_hash not in st.session_state.processed_hashes:
+
+            with st.spinner(f"Processing {uploaded_file.name}..."):
+
+                try:
+                    result = ingest_uploaded_file(uploaded_file)
+
+                    st.session_state.uploaded_files[
+                        result["filename"]
+                    ] = result
+
+                    st.session_state.processed_hashes.add(file_hash)
+
+                    st.success(
+                        f"Successfully indexed {result['filename']}!"
+                    )
+
+                    st.caption(
+                        f"{result['chunks_added']} chunks added."
+                    )
+
+                except Exception as error:
+                    st.error(f"Could not process document: {error}")
+
+    st.divider()
+
+    st.write("**Uploaded Documents:**")
+
     if st.session_state.uploaded_files:
-        for file in st.session_state.uploaded_files:
-            st.write(f"- {file}")
+
+        for filename, details in st.session_state.uploaded_files.items():
+
+            st.write(f"📄 {filename}")
+
+            st.caption(
+                f"{details['chunks_added']} indexed chunks"
+            )
+
     else:
-        st.write("No files uploaded yet.")
+        st.info("No uploaded documents yet.")
+
+    st.divider()
 
 
+# --------------------------------------------------
+# 6. Clear uploaded documents
+# --------------------------------------------------
 
-    # Clear all files button with confirmation
-    if st.button("Clear All"):
-        st.session_state.clear_all_flag = True  # Turn on the Clear All switch
+    if st.button("Clear All", use_container_width=True):
+        st.session_state.clear_all_flag = True
 
-    # Handle confirmation logic
     if st.session_state.clear_all_flag:
-        confirm = st.warning(
-            "Are you sure you want to clear all uploaded files?",
-            icon="⚠️",
+
+        st.warning(
+            "Are you sure you want to delete all uploaded documents?"
         )
-        # Use unique keys for buttons to avoid interference
-        confirm_clear = st.button("Confirm Clear All", key="confirm_clear_all")
-        cancel_clear = st.button("Cancel", key="cancel_clear_all")
 
-        if confirm_clear:
-            st.session_state.uploaded_files.clear()  # Clear the toy box (files)
-            st.session_state.files_cleared = True  # Turn on the Files Cleared light
-            st.session_state.clear_all_flag = False  # Turn off the Clear All switch
-        elif cancel_clear:
-            st.session_state.clear_all_flag = False  # Turn off the Clear All switch
+        col1, col2 = st.columns(2)
 
-    # Display success message if files were cleared
-    if "files_cleared" in st.session_state and st.session_state.files_cleared:
-        st.success("All files have been cleared.")
-        # Do NOT reset files_cleared immediately; let it persist for one rerun
-        st.session_state.files_cleared = False  # Reset AFTER the success message is shown in the next rerun
+        with col1:
+            if st.button(
+                "Confirm",
+                key="confirm_clear",
+                use_container_width=True,
+            ):
 
-    # Debugging logs
-    # st.write(f"Clear All Flag: {st.session_state.clear_all_flag}")
-    # st.write(f"Files Cleared: {st.session_state.get('files_cleared', False)}")
-    # st.write(f"Uploaded Files: {st.session_state.uploaded_files}")
+                try:
+                    deleted_chunks = clear_uploaded_documents()
 
-    # Main content area
-    st.markdown('<div class="main-content">', unsafe_allow_html=True)
+                    st.session_state.uploaded_files.clear()
+                    st.session_state.processed_hashes.clear()
+                    st.session_state.clear_all_flag = False
+
+                    # Reset the file uploader.
+                    st.session_state.uploader_version += 1
+
+                    st.success(
+                        f"Deleted {deleted_chunks} uploaded chunks."
+                    )
+
+                    st.rerun()
+
+                except Exception as error:
+                    st.error(f"Could not clear documents: {error}")
+
+        with col2:
+            if st.button(
+                "Cancel",
+                key="cancel_clear",
+                use_container_width=True,
+            ):
+                st.session_state.clear_all_flag = False
+                st.rerun()
+
+
+# --------------------------------------------------
+# 7. Main chatbot interface
+# --------------------------------------------------
 
 st.title("MS2B Chatbot")
+
 st.write("Ask questions about your documents.")
 
-message = st.chat_message("assistant")
-message.write("Hello human – how can i help you? (¬`‸´¬)")
+if not st.session_state.messages:
 
-# Initialize chat history
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+    with st.chat_message("assistant"):
+        st.write(
+            "Hello human – how can i help you? (¬`‸´¬)"
+        )
 
-# Display chat messages from history on app rerun
+
+# Display previous messages.
 for message in st.session_state.messages:
+
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
+
+# --------------------------------------------------
+# 8. Chat input connected to LangGraph
+# --------------------------------------------------
+
 if prompt := st.chat_input("Ask away..."):
-    # Display user message to chat container
+
+    # Display and save the user's question.
+    st.session_state.messages.append({
+        "role": "user",
+        "content": prompt,
+    })
+
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Add user message to chat history
-    st.session_state.messages.append({"role": "user", "content": prompt})
-
-    response = f"Echo: {prompt}"
-    # Display assistant message to chat container
+    # Generate an answer using the backend workflow.
     with st.chat_message("assistant"):
-        st.markdown(response)
-    # Add assistant message to chat history
-    st.session_state.messages.append({"role": "assistant", "content": response})
 
+        with st.spinner("Searching documents and generating an answer..."):
 
-# Define a callback function to handle user input
-def handle_user_input():
-    user_input = st.session_state["user_input"]  # Get the current input
-    if user_input:
-        # Simulate a bot response (replace this with actual logic or API call)
-        bot_response = f"I'm a bot, and you said: {user_input}"
-        # Append the conversation to chat history
-        st.session_state["chat_history"].append({"user": user_input, "bot": bot_response})
-        # Clear the input box
-        st.session_state["user_input"] = ""
+            try:
+                workflow = get_workflow()
 
+                output = workflow.invoke({
+                    "question": prompt
+                })
 
-st.markdown('</div>', unsafe_allow_html=True)
+                result = output.get("result", {})
+
+                answer_text = result.get(
+                    "answer",
+                    "I couldn't generate an answer."
+                )
+
+                st.markdown(answer_text)
+
+                # Display source information separately.
+                citations = result.get("citations", [])
+
+                if citations:
+
+                    with st.expander("View Sources"):
+                        for citation in citations:
+                            st.write(f"- {citation}")
+
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": answer_text,
+                })
+
+            except Exception as error:
+
+                error_message = (
+                    "Something went wrong while generating the answer. "
+                    "Please check that Ollama and the backend are running."
+                )
+
+                st.error(error_message)
+                st.exception(error)
+
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": error_message,
+                })
